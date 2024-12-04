@@ -4,7 +4,7 @@ autor....: Jean Marcos
 Objetivo.: Define estruturas da tabela do banco Custumer.
 *********************************************************************************/
 
-DEFINE TEMP-TABLE tt-customer  SERIALIZE-NAME "clientes" /* LIKE Customer */
+DEFINE TEMP-TABLE tt-customer NO-UNDO  SERIALIZE-NAME "customers"   /* LIKE Customer */
   FIELD Address      AS CHARACTER              FORMAT "x(35)"          SERIALIZE-NAME "endereco"
   FIELD Address2     AS CHARACTER              FORMAT "x(35)"          SERIALIZE-NAME "endereco_2"
   FIELD Balance      AS DECIMAL     DECIMALS 2 FORMAT "->,>>>,>>9.99"  //SERIALIZE-NAME ""

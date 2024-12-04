@@ -13,7 +13,7 @@ https://docs.progress.com/pt-BR/bundle/openedge-abl-reference-122/page/Progress.
 USING Progress.Json.ObjectModel.JsonObject.
 USING PROGRESS.Json.ObjectModel.JsonArray.
 
-{customer.i}
+{includes/customer.i}
 
 DEF VAR oJson  AS JsonObject.
 DEF VAR oArray AS JsonArray.
