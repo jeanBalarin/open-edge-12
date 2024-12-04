@@ -1,7 +1,7 @@
 /*******************************************************************************
 Programa..: json/get-types-json.p
 Autor.....: Jean Marcos 
-Objetivo..: Mostra os tipos retornados por cata tipo de dado em um Json.
+Objetivo..: Mostra os tipos retornados por cada tipo de dado em um Json.
 data......: 03/01/24 
 ********************************************************************************/
 
