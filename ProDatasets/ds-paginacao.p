@@ -7,34 +7,46 @@ USING Progress.Json.ObjectModel.JsonObject.
 
 {includes/dsCustomerOrder.i}
 
-DEF VAR ix     AS INT NO-UNDO.
-DEF VAR i-reg  AS INT NO-UNDO.
+DEF VAR ix       AS INT NO-UNDO.
+DEF VAR i-reg    AS INT NO-UNDO.
+DEF VAR i-pagina AS INT NO-UNDO INIT 0.
+DEF VAR l-next   AS LOG NO-UNDO.
+
 DEF VAR oJson  AS JsonObject.
 
 DEFINE DATA-SOURCE src-customer FOR Customer.
 DEFINE DATA-SOURCE src-order    FOR Order.
 DEFINE DATA-SOURCE src-orderLine FOR OrderLine.
 
-//RUN p-for-each-fill-dataset.
-//DATASET dsCustomerOrder:WRITE-JSON("File", "c:\temp\ds-custorder.json", TRUE).
+REPEAT ON ENDKEY UNDO, LEAVE:
+    /* consome os registro até o final da paginação */
+    RUN p-fill-dataset-pag.
 
-RUN p-fill-method-dataset.
+    oJson = NEW JsonObject().
+    DATASET dsCustomerOrder:WRITE-JSON("JsonObject", oJson).
 
-oJson = NEW   JsonObject().
-DATASET dsCustomerOrder:WRITE-JSON("JsonObject", oJson).
+    oJson:ADD("rowCont", i-reg).
+    oJson:ADD("hasNext", l-next).
+    oJson:ADD("pag", i-pagina).
 
-oJson:ADD("quantidadeRegistros", i-reg).
-
-oJson:WriteFile("c:\temp\dsCustOrderFillDts.Json", TRUE).
-
-
-FINALLY:
+    oJson:writeFile("c:\temp\dsPag-" + STRING(i-pagina) + ".json", TRUE).
     
-    DELETE OBJECT oJson NO-ERROR.
+    DISP i-pagina.
+    
+    IF l-next = NO THEN DO:
+        LEAVE.    
+    END.
+    ELSE DO:
+        i-pagina = i-pagina + 1.
+    END.
+    
+    FINALLY:
+        DELETE OBJECT oJson NO-ERROR.
+    END FINALLY.
+    
+END.
 
-END FINALLY.
-
-PROCEDURE p-fill-method-dataset:
+PROCEDURE p-fill-dataset-pag:
 /* carrega os dados das temp-tables com o metodo fill usando datasources */
 
     DATASET dsCustomerOrder:EMPTY-DATASET().
@@ -46,15 +58,23 @@ PROCEDURE p-fill-method-dataset:
     /* forma de chamar uma procedure para customizar os campos da tt */
     BUFFER tt-customer:SET-CALLBACK-PROCEDURE("after-row-fill", "p-cont-registros", THIS-PROCEDURE /* ou handle*/).
     
+    
+    
     /* define a quantidade de registros (tamanho do lote) */
     BUFFER tt-customer:BATCH-SIZE = 100.
-    
-    /* Parametros que podem ser passados como filtros*/
-    DATA-SOURCE src-customer:FILL-WHERE-STRING = "WHERE CustNum >= 4000".
+
+    IF i-pagina > 1 THEN DO:
+        DATA-SOURCE src-customer:RESTART-ROW = ((BUFFER tt-customer:BATCH-SIZE * i-pagina) - 1). 
+    END.
+    ELSE DO:
+        i-pagina = 1.
+    END.
     
      i-reg = 0.
     DATASET dsCustomerOrder:FILL().
-
+    
+    l-next = IF DATA-SOURCE src-customer:NEXT-ROWID <> ? THEN YES ELSE NO.
+    
     FINALLY:
     
           BUFFER tt-customer:DETACH-DATA-SOURCE().
@@ -63,40 +83,6 @@ PROCEDURE p-fill-method-dataset:
 
     END FINALLY.
     
-END PROCEDURE.
-
-PROCEDURE p-for-each-fill-dataset:
-/* Carrega os dados do dataset via for each convencional */
-    
-    // equivale a fazer empty temp-table para todas as tts do conjunto.
-    DATASET dsCustomerOrder:EMPTY-DATASET().
-    
-    FOR EACH Customer NO-LOCK,
-        EACH Order OF Customer NO-LOCK,
-            EACH OrderLine OF Order NO-LOCK    
-        BY Customer.custNUm
-        ix = 1 TO 100:
-        
-        IF NOT CAN-FIND(FIRST tt-customer NO-LOCK WHERE
-                            tt-customer.custNum = Customer.custNum) THEN DO:
-            CREATE tt-customer.
-            BUFFER-COPY Customer TO tt-customer.
-            
-        END.
-        
-        IF NOT CAN-FIND(FIRST tt-order NO-LOCK WHERE tt-order.orderNum = Order.OrderNum) THEN DO:
-            
-            CREATE tt-order.
-            BUFFER-COPY Order TO tt-order.
-            
-        END.
-        
-        CREATE tt-orderLine.
-        BUFFER-COPY OrderLine TO tt-orderLine.
-
-    END.
-    
-
 END PROCEDURE.
 
 PROCEDURE p-cont-registros PRIVATE:
@@ -110,6 +96,3 @@ PROCEDURE p-cont-registros PRIVATE:
     i-reg = i-reg + 1.
     
 END PROCEDURE.
-
-
-
